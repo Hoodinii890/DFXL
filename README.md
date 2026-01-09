@@ -1,4 +1,48 @@
 # DataFrameXL
+
+## 📦 Instalación / Installation
+
+### Desde GitHub / From GitHub
+
+Puedes instalar la librería directamente desde GitHub usando pip:
+
+```bash
+pip install git+https://github.com/tu-usuario/DataFrameStyle.git
+```
+
+O desde un branch específico:
+
+```bash
+pip install git+https://github.com/tu-usuario/DataFrameStyle.git@main
+```
+
+O desde una versión/tag específica:
+
+```bash
+pip install git+https://github.com/tu-usuario/DataFrameStyle.git@v0.1.0
+```
+
+### Instalación local / Local Installation
+
+Si clonaste el repositorio, puedes instalarlo en modo desarrollo:
+
+```bash
+git clone https://github.com/tu-usuario/DataFrameStyle.git
+cd DataFrameStyle
+pip install -e .
+```
+
+### Dependencias / Dependencies
+
+La librería requiere:
+- `pandas>=1.3.0`
+- `openpyxl>=3.0.0`
+- `numpy>=1.20.0`
+
+Estas se instalarán automáticamente al instalar desde GitHub.
+
+---
+
 ## 📌 ¿Qué es?
 `DataFrameXL` es una extensión de `pandas.DataFrame` que permite trabajar de forma integrada con **Excel (openpyxl)**.
 Con este objeto puedes:
@@ -96,19 +140,22 @@ Además, `DataFrameXL` incluye métodos para aplicar estilos sin modificar datos
 - **`save(filename=None)`** → Aplica los estilos y guarda el archivo Excel. Si no se pasa filename, guarda en el archivo original.
 ## 📖 Ejemplo de uso
 ```python
-from DFXL import `DataFrame`
-from openpyxl.styles  import Font, PatternFill
+from DFXL import DataFrameXL
+from openpyxl.styles import Font, PatternFill
 
-df = `DataFrame`(filename="reporte.xlsx", sheet_name="ASISTENCIA ENERO")
+# Crear o abrir un archivo Excel
+df = DataFrameXL(filename="reporte.xlsx", sheet_name="hoja1")
 
-Modificar datos con pandas
+# Modificar datos con pandas
 df.loc[0, "A"] = 123
 
-Aplicar estilos
+# Aplicar estilos
 df.set_cell_style(0, "A", {"font": Font(bold=True, color="FF0000")})
 df.set_row_style(1, {"fill": PatternFill("solid", fgColor="FFFF00")})
 df.set_header_cell_style("B", {"font": Font(italic=True, color="0000FF")})
 
+# Guardar cambios
+```python
 df.save()
 ```
 ## 🎯 Ventajas
