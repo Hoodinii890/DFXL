@@ -381,5 +381,4 @@ class DataFrameXL(pd.DataFrame):
             self._styles[col_name] = {}
         self._styles[col_name]["header"] = style
 
-
 __all__ = ["DataFrameXL"]
