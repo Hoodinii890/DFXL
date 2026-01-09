@@ -7,19 +7,19 @@
 Puedes instalar la librería directamente desde GitHub usando pip:
 
 ```bash
-pip install git+https://github.com/tu-usuario/DataFrameStyle.git
+pip install git+https://github.com/Hoodinii890/DFXL.git
 ```
 
 O desde un branch específico:
 
 ```bash
-pip install git+https://github.com/tu-usuario/DataFrameStyle.git@main
+pip install git+https://github.com/Hoodinii890/DFXL.git@main
 ```
 
 O desde una versión/tag específica:
 
 ```bash
-pip install git+https://github.com/tu-usuario/DataFrameStyle.git@v0.1.0
+pip install git+https://github.com/Hoodinii890/DFXL.git@v0.1.0
 ```
 
 ### Instalación local / Local Installation
@@ -27,7 +27,7 @@ pip install git+https://github.com/tu-usuario/DataFrameStyle.git@v0.1.0
 Si clonaste el repositorio, puedes instalarlo en modo desarrollo:
 
 ```bash
-git clone https://github.com/tu-usuario/DataFrameStyle.git
+git clone https://github.com/Hoodinii890/DFXL.git
 cd DataFrameStyle
 pip install -e .
 ```
