@@ -465,6 +465,32 @@ class DataFrameXL(pd.DataFrame):
 
         return new_styles
 
+    def drop(self, labels=None, axis=0, index=None, columns=None, inplace=False, **kwargs):
+            """
+            Intercepta el drop de pandas y además limpia estilos asociados.
+            """
+            # 1. Ejecutar el drop normal de pandas
+            result = super().drop(labels=labels, axis=axis, index=index, columns=columns, inplace=inplace, **kwargs)
+
+            # 2. Si es inplace, limpiar estilos en self
+            target = self if inplace else result
+
+            if axis == 0 or index is not None:  # borrando filas
+                rows_to_remove = labels if labels is not None else index
+                if rows_to_remove is not None:
+                    for col_name in target.columns:
+                        if col_name in target._styles:
+                            for row in rows_to_remove:
+                                target._styles[col_name].pop(row, None)
+
+            if axis == 1 or columns is not None:  # borrando columnas
+                cols_to_remove = labels if labels is not None else columns
+                if cols_to_remove is not None:
+                    for col_name in cols_to_remove:
+                        target._styles.pop(col_name, None)
+
+            return target
+
     def set_column_style(self, col_name, style: dict):
         """Aplica un estilo global a toda la columna."""
         if not hasattr(self, "_styles"):
