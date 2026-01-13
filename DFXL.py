@@ -74,7 +74,22 @@ class DataFrameXL(pd.DataFrame):
     def __apply_all_styles(self):
         if not hasattr(self, "_styles"):
             return
+
+        # 1. Estilo global de todo el documento
+        if "__document__" in self._styles:
+            rules = self._styles["__document__"]
+            for row_key, style in rules.items():
+                if row_key == "global":
+                    # aplicar a todas las celdas (encabezados + datos)
+                    for i in range(len(self) + 1):  # +1 para incluir encabezado
+                        for j in range(len(self.columns)):
+                            cell = self._ws.cell(row=i+1, column=j+1)
+                            self._apply_style(cell, style)
+
+        # 2. Estilos por columna/fila como ya tienes
         for col_name, rules in self._styles.items():
+            if col_name == "__document__":
+                continue
             col_excel = list(self.columns).index(col_name) + 1
             for row_key, style in rules.items():
                 if row_key == "global":
@@ -95,6 +110,7 @@ class DataFrameXL(pd.DataFrame):
                     for i in row_key:
                         cell = self._ws.cell(row=i+2, column=col_excel)
                         self._apply_style(cell, style)
+
 
     # Función auxiliar para aplicar estilos
     def _apply_style(self, cell, style):
@@ -411,7 +427,6 @@ class DataFrameXL(pd.DataFrame):
 
         return result
 
-
     def _remap_style_keys(self, old_to_new):
         new_styles = {}
 
@@ -438,7 +453,6 @@ class DataFrameXL(pd.DataFrame):
             new_styles[col] = final_rules
 
         return new_styles
-
 
     def set_column_style(self, col_name, style: dict):
         """Aplica un estilo global a toda la columna."""
@@ -490,5 +504,13 @@ class DataFrameXL(pd.DataFrame):
         if col_name not in self._styles:
             self._styles[col_name] = {}
         self._styles[col_name]["header"] = style
+
+    def set_global_style(self, style: dict):
+        """Aplica un estilo global a todas las celdas del documento (encabezados y datos)."""
+        if not hasattr(self, "_styles"):
+            self._styles = {}
+        # Usamos una clave especial "__document__"
+        self._styles["__document__"] = {"global": style}
+
 
 __all__ = ["DataFrameXL"]

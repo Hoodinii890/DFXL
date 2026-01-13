@@ -136,7 +136,7 @@ Además, `DataFrameXL` incluye métodos para aplicar estilos sin modificar datos
 - **`set_row_style(row_idx, style)`** → Aplica un estilo a toda la fila.
 - **`set_header_row_style(style)`** → Aplica un estilo a toda la fila de encabezados.
 - **`set_header_cell_style(col_name, style)`** → Aplica un estilo a la celda de encabezado de una columna específica.
-- **`apply_all_styles()`** → Aplica todos los estilos registrados en self._styles a la hoja de Excel (se llama automáticamente dentro de save).
+- **`set_global_style()`** → Aplica estilos de manera global en todo el documento.
 - **`save(filename=None)`** → Aplica los estilos y guarda el archivo Excel. Si no se pasa filename, guarda en el archivo original.
 ## 📖 Ejemplo de uso
 ```python
