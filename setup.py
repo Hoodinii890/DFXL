@@ -10,17 +10,17 @@ def read_readme():
     return ""
 
 # Leer la versión desde el código o definirla aquí
-__version__ = "1.1.3.1"
+__version__ = "1.1.4"
 
 setup(
     name="dataframexl",
     version=__version__,
-    author="Tu Nombre",  # Cambiar por tu nombre o el del autor
-    author_email="tu.email@ejemplo.com",  # Cambiar por tu email
+    author="Jhorman Gallego",
+    author_email="jhormangallegogallego@gmail.com",
     description="Extensión de pandas.DataFrame para trabajar con Excel y estilos de forma integrada",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
-    url="https://github.com/tu-usuario/DataFrameStyle",  # Cambiar por la URL de tu repositorio
+    url="https://github.com/Hoodinii890/DFXL", 
     py_modules=["DFXL"],  # Módulo principal
     include_package_data=True,
     install_requires=[
@@ -47,9 +47,9 @@ setup(
     ],
     keywords="pandas excel openpyxl dataframe styling formatting",
     project_urls={
-        "Bug Reports": "https://github.com/tu-usuario/DataFrameStyle/issues",
-        "Source": "https://github.com/tu-usuario/DataFrameStyle",
-        "Documentation": "https://github.com/tu-usuario/DataFrameStyle#readme",
+        "Bug Reports": "https://github.com/Hoodinii890/DFXL/issues",
+        "Source": "https://github.com/Hoodinii890/DFXL",
+        "Documentation": "https://github.com/Hoodinii890/DFXL#readme",
     },
 )
 
