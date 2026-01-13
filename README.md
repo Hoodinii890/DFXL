@@ -144,7 +144,7 @@ from DFXL import DataFrameXL
 from openpyxl.styles import Font, PatternFill
 
 # Crear o abrir un archivo Excel
-df = DataFrameXL(filename="reporte.xlsx", sheet_name="hoja1")
+df = DataFrameXL(filename="reporte.xlsx", sheet_name="hoja1", """df=DataFrame #Si se pasa un DataFrame se contruirá el objeto al rededor de el ignorando la exitencia del archivo filename si existe y cuando se guarde sobrescribirá el archivo.""")
 
 # Modificar datos con pandas
 df.loc[0, "A"] = 123

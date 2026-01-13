@@ -11,33 +11,45 @@ class DataFrameXL(pd.DataFrame):
         # pandas usará esto para crear nuevos objetos del mismo tipo
         return DataFrameXL
 
-    def __init__(self, data=None, filename=None, sheet_name="Hoja1", *args, **kwargs):
+    def __init__(self, data=None, filename=None, sheet_name="Hoja1", df: pd.DataFrame = None, *args, **kwargs):
         self._filename = filename
         self._sheet_name = sheet_name
         self._styles = {}
 
-        # Caso 1: inicialización desde Excel
-        if filename is not None and isinstance(filename, str) and os.path.exists(filename):
-            self._wb = load_workbook(filename)
-            if sheet_name in self._wb.sheetnames:
-                self._ws = self._wb[sheet_name]
+        if df == None:
+            # Caso 1: inicialización desde Excel
+            if filename is not None and isinstance(filename, str) and os.path.exists(filename):
+                self._wb = load_workbook(filename)
+                if sheet_name in self._wb.sheetnames:
+                    self._ws = self._wb[sheet_name]
+                else:
+                    self._ws = self._wb.create_sheet(sheet_name)
+
+                values = list(self._ws.values)
+                if values:
+                    columns = values[0]
+                    rows = values[1:]
+                    df = pd.DataFrame(rows, columns=columns)
+                else:
+                    df = pd.DataFrame()
+
+                super().__init__(df, *args, **kwargs)
+            # Caso 2: inicialización desde datos (cuando pandas llama internamente)
             else:
-                self._ws = self._wb.create_sheet(sheet_name)
+                if filename is not None and isinstance(filename, str):
+                    # Crear workbook nuevo si se pasó filename pero no existe
+                    self._wb = Workbook()
+                    self._ws = self._wb.active
+                    self._ws.title = sheet_name
+                else:
+                    # Si no hay filename, no inicializamos workbook
+                    self._wb = None
+                    self._ws = None
 
-            values = list(self._ws.values)
-            if values:
-                columns = values[0]
-                rows = values[1:]
-                df = pd.DataFrame(rows, columns=columns)
-            else:
-                df = pd.DataFrame()
-
-            super().__init__(df, *args, **kwargs)
-
-        # Caso 2: inicialización desde datos (cuando pandas llama internamente)
+                super().__init__(data, *args, **kwargs)
         else:
-            if filename is not None and isinstance(filename, str):
-                # Crear workbook nuevo si se pasó filename pero no existe
+            if filename is not None:
+                # Crear workbook nuevo si se pasó filename
                 self._wb = Workbook()
                 self._ws = self._wb.active
                 self._ws.title = sheet_name
@@ -45,8 +57,7 @@ class DataFrameXL(pd.DataFrame):
                 # Si no hay filename, no inicializamos workbook
                 self._wb = None
                 self._ws = None
-
-            super().__init__(data, *args, **kwargs)
+            super().__init__(df, *args, **kwargs)
 
 
     def save(self, filename=None):
