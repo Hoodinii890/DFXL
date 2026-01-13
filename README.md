@@ -153,7 +153,7 @@ df.loc[0, "A"] = 123
 df.set_cell_style(0, "A", {"font": Font(bold=True, color="FF0000")})
 df.set_row_style(1, {"fill": PatternFill("solid", fgColor="FFFF00")})
 df.set_header_cell_style("B", {"font": Font(italic=True, color="0000FF")})
-
+```
 ## 🔄 Reordenamiento con estilos
 DataFrameXL ahora soporta los métodos de ordenamiento de pandas con preservación de estilos.
 Esto significa que al reordenar filas, los colores, fuentes y formatos aplicados se mueven junto con los datos.
