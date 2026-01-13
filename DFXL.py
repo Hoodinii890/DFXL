@@ -466,30 +466,88 @@ class DataFrameXL(pd.DataFrame):
         return new_styles
 
     def drop(self, labels=None, axis=0, index=None, columns=None, inplace=False, **kwargs):
-            """
-            Intercepta el drop de pandas y además limpia estilos asociados.
-            """
-            # 1. Ejecutar el drop normal de pandas
-            result = super().drop(labels=labels, axis=axis, index=index, columns=columns, inplace=inplace, **kwargs)
+        # Resolver qué se está borrando: filas (axis=0) o columnas (axis=1)
+        is_cols = (axis == 1) or (columns is not None)
+        is_rows = (axis == 0) or (index is not None)
 
-            # 2. Si es inplace, limpiar estilos en self
-            target = self if inplace else result
+        # Resolver conjuntos a eliminar (labels normalizados)
+        cols_to_remove = None
+        rows_to_remove = None
 
-            if axis == 0 or index is not None:  # borrando filas
-                rows_to_remove = labels if labels is not None else index
-                if rows_to_remove is not None:
-                    for col_name in target.columns:
-                        if col_name in target._styles:
-                            for row in rows_to_remove:
-                                target._styles[col_name].pop(row, None)
+        if is_cols:
+            cols_to_remove = columns if columns is not None else labels
+            if isinstance(cols_to_remove, (str, int)):
+                cols_to_remove = [cols_to_remove]
+            elif cols_to_remove is None:
+                cols_to_remove = []
 
-            if axis == 1 or columns is not None:  # borrando columnas
-                cols_to_remove = labels if labels is not None else columns
-                if cols_to_remove is not None:
-                    for col_name in cols_to_remove:
-                        target._styles.pop(col_name, None)
+        if is_rows:
+            rows_to_remove = index if index is not None else labels
+            if isinstance(rows_to_remove, (str, int)):
+                rows_to_remove = [rows_to_remove]
+            elif rows_to_remove is None:
+                rows_to_remove = []
 
-            return target
+        # 1) CAPTURAR POSICIONES EN EL WORKSHEET ANTES DEL DROP
+        col_positions = []
+        row_positions = []
+
+        if self._ws is not None:
+            # Encabezados en fila 1 para columnas
+            if cols_to_remove:
+                header_values = [cell.value for cell in self._ws[1]]
+                for name in cols_to_remove:
+                    # Buscar por nombre exacto en encabezado
+                    if name in header_values:
+                        j = header_values.index(name) + 1  # Excel es 1-based
+                        col_positions.append(j)
+                    else:
+                        # Fallback: usar la posición en el DF si existe
+                        if name in list(self.columns):
+                            j = list(self.columns).index(name) + 1
+                            col_positions.append(j)
+
+            # Filas de datos: mapeo por posición del índice actual
+            if rows_to_remove:
+                # Convertir labels del índice a posiciones enteras
+                # Si el índice es RangeIndex, esto suele ser directo; si no, usamos get_indexer
+                pos = self.index.get_indexer(rows_to_remove)
+                # Filtrar -1 (no encontrados)
+                pos = [p for p in pos if p != -1]
+                # Convertir a posiciones en Excel (+2 por encabezado)
+                row_positions = [p + 2 for p in pos]
+
+        # 2) LIMPIAR EL WORKSHEET PRIMERO (EVITAR BÚSQUEDAS TRAS DROP)
+        if self._ws is not None:
+            # Borrar columnas en orden descendente para no desalinear índices
+            for j in sorted(set(col_positions), reverse=True):
+                self._ws.delete_cols(j)
+            # Borrar filas en orden descendente
+            for r in sorted(set(row_positions), reverse=True):
+                self._ws.delete_rows(r)
+
+        # 3) EJECUTAR EL DROP DE PANDAS
+        result = super().drop(labels=labels, axis=axis, index=index, columns=columns, inplace=inplace, **kwargs)
+        target = self if inplace else result
+
+        # 4) LIMPIAR ESTILOS EN _styles
+        if hasattr(target, "_styles"):
+            # Columnas
+            if cols_to_remove:
+                for col_name in cols_to_remove:
+                    target._styles.pop(col_name, None)
+
+            # Filas (por índice de DF, no posiciones Excel)
+            if rows_to_remove:
+                for col_name, rules in list(target._styles.items()):
+                    for r_label in rows_to_remove:
+                        # Si guardas estilos por posición entera (0..n), necesitas convertir label->pos como arriba.
+                        # Aquí asumimos que usas índices de fila (enteros) como claves.
+                        rules.pop(r_label, None)
+
+        return target
+
+
 
     def set_column_style(self, col_name, style: dict):
         """Aplica un estilo global a toda la columna."""
