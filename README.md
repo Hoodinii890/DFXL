@@ -154,6 +154,32 @@ df.set_cell_style(0, "A", {"font": Font(bold=True, color="FF0000")})
 df.set_row_style(1, {"fill": PatternFill("solid", fgColor="FFFF00")})
 df.set_header_cell_style("B", {"font": Font(italic=True, color="0000FF")})
 
+## 🔄 Reordenamiento con estilos
+DataFrameXL ahora soporta los métodos de ordenamiento de pandas con preservación de estilos.
+Esto significa que al reordenar filas, los colores, fuentes y formatos aplicados se mueven junto con los datos.
+
+### Métodos disponibles
+- `sort_values` → Ordenar por valores de una columna.
+- `sort_index` → Ordenar por índice.
+- `reindex` → Reordenar filas/columnas según un nuevo índice.
+- `reset_index` → Reiniciar el índice manteniendo estilos.
+- `sample` → Reordenar filas de manera aleatoria.
+
+### Ejemplo de uso
+
+```python
+from DFXL import DataFrameXL
+
+df = DataFrameXL(filename="reporte.xlsx")
+df["A"] = {"data": ["Juan", "Ana", "Luis"]}
+df["B"] = {"data": [300, 100, 200]}
+
+# Ordenar por columna B y guardar
+df_sorted = df.sort_values("B", ignore_index=True)
+df_sorted.save("archivo_ordenado.xlsx")
+```
+👉 Los estilos aplicados a cada fila se mantienen en el archivo `archivo_ordenado.xlsx`.
+
 # Guardar cambios
 ```python
 df.save()

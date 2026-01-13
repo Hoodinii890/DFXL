@@ -6,42 +6,52 @@ import numpy as np
 class DataFrameXL(pd.DataFrame):
     _metadata = ["_filename", "_sheet_name", "_wb", "_ws", "_styles"]
 
-    def __init__(self, filename, sheet_name="Hoja1", *args, **kwargs):
+    @property
+    def _constructor(self):
+        # pandas usará esto para crear nuevos objetos del mismo tipo
+        return DataFrameXL
+
+    def __init__(self, data=None, filename=None, sheet_name="Hoja1", *args, **kwargs):
         self._filename = filename
         self._sheet_name = sheet_name
         self._styles = {}
 
-        if os.path.exists(filename):
-            # Abrir workbook existente
+        # Caso 1: inicialización desde Excel
+        if filename is not None and isinstance(filename, str) and os.path.exists(filename):
             self._wb = load_workbook(filename)
             if sheet_name in self._wb.sheetnames:
                 self._ws = self._wb[sheet_name]
             else:
                 self._ws = self._wb.create_sheet(sheet_name)
 
-            data = list(self._ws.values)
-            if data:
-                # Primera fila como encabezados
-                columns = data[0]
-                rows = data[1:]
+            values = list(self._ws.values)
+            if values:
+                columns = values[0]
+                rows = values[1:]
                 df = pd.DataFrame(rows, columns=columns)
             else:
                 df = pd.DataFrame()
 
-            # Inicializar DataFrameXL con los datos leídos
             super().__init__(df, *args, **kwargs)
 
+        # Caso 2: inicialización desde datos (cuando pandas llama internamente)
         else:
-            # Crear workbook nuevo
-            self._wb = Workbook()
-            self._ws = self._wb.active
-            self._ws.title = sheet_name
+            if filename is not None and isinstance(filename, str):
+                # Crear workbook nuevo si se pasó filename pero no existe
+                self._wb = Workbook()
+                self._ws = self._wb.active
+                self._ws.title = sheet_name
+            else:
+                # Si no hay filename, no inicializamos workbook
+                self._wb = None
+                self._ws = None
 
-            # Inicializar DataFrameXL vacío
-            super().__init__(*args, **kwargs)
+            super().__init__(data, *args, **kwargs)
 
-    def save(self):
-        filename = self._filename
+
+    def save(self, filename=None):
+        if filename == None:
+            filename = self._filename
         # 1. Aplicar estilos antes de guardar
         self.__apply_all_styles()
 
@@ -64,7 +74,6 @@ class DataFrameXL(pd.DataFrame):
     def __apply_all_styles(self):
         if not hasattr(self, "_styles"):
             return
-
         for col_name, rules in self._styles.items():
             col_excel = list(self.columns).index(col_name) + 1
             for row_key, style in rules.items():
@@ -109,7 +118,6 @@ class DataFrameXL(pd.DataFrame):
                 return base_loc[key]
 
             def __setitem__(_, key, value):
-                print(f"[DEBUG] loc update -> key:{key}, value:{value}")
 
                 # Caso especial: value es dict con data + style
                 if isinstance(value, dict) and "data" in value and "style" in value:
@@ -187,7 +195,6 @@ class DataFrameXL(pd.DataFrame):
                                     elif isinstance(row_key, slice) and i in range(row_key.start or 0, row_key.stop or len(base_loc.obj)):
                                         base_loc.obj._apply_style(cell, style)
 
-                    print("[DEBUG] Excel sincronizado desde loc -> DataFrame completo")
                 except Exception as e:
                     print(f"[ERROR] No se pudo actualizar Excel desde loc: {e}")
 
@@ -207,7 +214,6 @@ class DataFrameXL(pd.DataFrame):
                 return base_iloc[key]
 
             def __setitem__(_, key, value):
-                print(f"[DEBUG] iloc update -> key:{key}, value:{value}")
 
                 # Caso especial: value es dict con data + style
                 if isinstance(value, dict) and "data" in value and "style" in value:
@@ -260,7 +266,6 @@ class DataFrameXL(pd.DataFrame):
                                 style = base_iloc.obj._styles[col_name][i]
                                 base_iloc.obj._apply_style(cell, style)
 
-                    print("[DEBUG] Excel sincronizado desde iloc -> DataFrame completo")
                 except Exception as e:
                     print(f"[ERROR] No se pudo actualizar Excel desde iloc: {e}")
 
@@ -280,7 +285,6 @@ class DataFrameXL(pd.DataFrame):
             # Guardar estilo en self._styles usando el nombre de la columna
             self._styles[key] = {"global":style}
 
-        print(f"[DEBUG] __setitem__ -> key:{key}, value:{value}")
         result = super().__setitem__(key, value)
 
         try:
@@ -295,7 +299,6 @@ class DataFrameXL(pd.DataFrame):
                 row_excel = i + 2  # +2 por cabecera
                 self._ws.cell(row=row_excel, column=col_excel, value=val)
 
-            print(f"[DEBUG] Excel sincronizado -> columna:{key}, valores:{list(self[key])}")
         except Exception as e:
             print(f"[ERROR] No se pudo actualizar Excel: {e}")
 
@@ -314,7 +317,6 @@ class DataFrameXL(pd.DataFrame):
             # Guardar estilo en self._styles usando el nombre de la columna
             self._styles[col_name][index] = style
 
-        print(f"[DEBUG] _set_value -> index:{index}, col:{col}, value:{value}")
         result = super()._set_value(index, col, value, takeable=takeable)
 
         try:
@@ -324,11 +326,119 @@ class DataFrameXL(pd.DataFrame):
                 val = self.at[index, col_name]
                 self._ws.cell(row=row_excel, column=j+1, value=val)
 
-            print(f"[DEBUG] Excel sincronizado -> fila:{index}, valores:{list(self.loc[index])}")
         except Exception as e:
             print(f"[ERROR] No se pudo actualizar Excel desde _set_value: {e}")
 
         return result
+    
+    def sort_values(self, *args, **kwargs):
+        ignore_index = kwargs.pop("ignore_index", False)
+
+        old_index = self.index.copy()
+        result = super().sort_values(*args, ignore_index=False, **kwargs)
+        new_index = result.index
+
+        # Construir mapeo nuevo -> viejo
+        mapping = dict(zip(new_index, old_index))
+
+        # Remapear estilos y asignarlos explícitamente
+        remapped = self._remap_style_keys(mapping)
+        object.__setattr__(result, "_styles", remapped)
+
+        # Copiar otros metadatos
+        for name in self._metadata:
+            if name != "_styles":
+                object.__setattr__(result, name, getattr(self, name, None))
+
+        if ignore_index:
+            result = result.reset_index(drop=True)
+
+        return result
+
+    def sort_index(self, *args, **kwargs):
+        ignore_index = kwargs.pop("ignore_index", False)
+
+        old_index = self.index.copy()
+        result = super().sort_index(*args, ignore_index=False, **kwargs)
+        new_index = result.index
+
+        # Construir mapeo nuevo -> viejo
+        mapping = dict(zip(new_index, old_index))
+
+        # Remapear estilos
+        remapped = self._remap_style_keys(mapping)
+        object.__setattr__(result, "_styles", remapped)
+
+        # Copiar otros metadatos
+        for name in self._metadata:
+            if name != "_styles":
+                object.__setattr__(result, name, getattr(self, name, None))
+
+        if ignore_index:
+            result = result.reset_index(drop=True)
+
+        return result
+
+    def reindex(self, *args, **kwargs):
+        old_index = self.index.copy()
+        result = super().reindex(*args, **kwargs)
+        new_index = result.index
+
+        mapping = dict(zip(new_index, old_index))
+
+        remapped = self._remap_style_keys(mapping)
+        object.__setattr__(result, "_styles", remapped)
+
+        for name in self._metadata:
+            if name != "_styles":
+                object.__setattr__(result, name, getattr(self, name, None))
+
+        return result
+        
+    def sample(self, *args, **kwargs):
+        old_index = self.index.copy()
+        result = super().sample(*args, **kwargs)
+        new_index = result.index
+
+        mapping = dict(zip(new_index, old_index))
+
+        remapped = self._remap_style_keys(mapping)
+        object.__setattr__(result, "_styles", remapped)
+
+        for name in self._metadata:
+            if name != "_styles":
+                object.__setattr__(result, name, getattr(self, name, None))
+
+        return result
+
+
+    def _remap_style_keys(self, old_to_new):
+        new_styles = {}
+
+        for col, rules in self._styles.items():
+            temp_rules = {}
+
+            # 1) Mover claves numéricas a su destino temporal
+            for row_key, style in rules.items():
+                if isinstance(row_key, int) and row_key in old_to_new:
+                    dest = old_to_new[row_key]
+                    temp_rules[f"{dest}_temp"] = style
+                else:
+                    temp_rules[row_key] = style
+
+            # 2) Limpiar temporales
+            final_rules = {}
+            for row_key, style in temp_rules.items():
+                if isinstance(row_key, str) and row_key.endswith("_temp"):
+                    new_row = int(row_key[:-5])
+                    final_rules[new_row] = style
+                else:
+                    final_rules[row_key] = style
+
+            new_styles[col] = final_rules
+
+        return new_styles
+
 
     def set_column_style(self, col_name, style: dict):
         """Aplica un estilo global a toda la columna."""

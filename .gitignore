@@ -3,7 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 env/
-
+test.py
+test/
+*.xlsx
 # Distribution / packaging
 .Python
 build/
