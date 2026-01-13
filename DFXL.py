@@ -16,7 +16,7 @@ class DataFrameXL(pd.DataFrame):
         self._sheet_name = sheet_name
         self._styles = {}
 
-        if df == None:
+        if df is None:
             # Caso 1: inicialización desde Excel
             if filename is not None and isinstance(filename, str) and os.path.exists(filename):
                 self._wb = load_workbook(filename)
