@@ -11,6 +11,7 @@ class DataFrameXL(pd.DataFrame):
         # pandas usará esto para crear nuevos objetos del mismo tipo
         return DataFrameXL
 
+
     def __init__(self, data=None, filename=None, sheet_name="Hoja1", df: pd.DataFrame = None, *args, **kwargs):
         self._filename = filename
         self._sheet_name = sheet_name
@@ -33,31 +34,41 @@ class DataFrameXL(pd.DataFrame):
                 else:
                     df = pd.DataFrame()
 
+                # 🚀 Extraer estilos de cada celda y guardarlos en _styles
+                for j, col_name in enumerate(columns):
+                    self._styles[col_name] = {}
+                    for i, row in enumerate(rows):
+                        cell = self._ws.cell(row=i+2, column=j+1)  # +2 porque fila 1 es encabezado
+                        self._styles[col_name][i] = {
+                            "font": cell.font,
+                            "fill": cell.fill,
+                            "alignment": cell.alignment,
+                            "number_format": cell.number_format,
+                            # puedes añadir border, protection, etc.
+                        }
+
                 super().__init__(df, *args, **kwargs)
-            # Caso 2: inicialización desde datos (cuando pandas llama internamente)
             else:
+                # Caso 2: inicialización desde datos
                 if filename is not None and isinstance(filename, str):
-                    # Crear workbook nuevo si se pasó filename pero no existe
                     self._wb = Workbook()
                     self._ws = self._wb.active
                     self._ws.title = sheet_name
                 else:
-                    # Si no hay filename, no inicializamos workbook
                     self._wb = None
                     self._ws = None
-
                 super().__init__(data, *args, **kwargs)
         else:
+            # Caso 3: inicialización desde un DataFrame
             if filename is not None:
-                # Crear workbook nuevo si se pasó filename
                 self._wb = Workbook()
                 self._ws = self._wb.active
                 self._ws.title = sheet_name
             else:
-                # Si no hay filename, no inicializamos workbook
                 self._wb = None
                 self._ws = None
             super().__init__(df, *args, **kwargs)
+
 
 
     def save(self, filename=None):
@@ -125,14 +136,21 @@ class DataFrameXL(pd.DataFrame):
 
     # Función auxiliar para aplicar estilos
     def _apply_style(self, cell, style):
-        if "font" in style:
-            cell.font = style["font"]
-        if "fill" in style:
-            cell.fill = style["fill"]
-        if "alignment" in style:
-            cell.alignment = style["alignment"]
-        if "border" in style:
-            cell.border = style["border"]
+        from copy import copy
+        if "font" in style and style["font"]:
+            cell.font = copy(style["font"])
+        if "fill" in style and style["fill"]:
+            cell.fill = copy(style["fill"])
+        if "alignment" in style and style["alignment"]:
+            cell.alignment = copy(style["alignment"])
+        if "border" in style and style["border"]:
+            cell.border = copy(style["border"])
+        if "number_format" in style and style["number_format"]:
+            cell.number_format = style["number_format"]  # es string, no necesita copy
+        if "protection" in style and style["protection"]:
+            cell.protection = copy(style["protection"])
+
+
 
     @property
     def loc(self):
@@ -439,8 +457,10 @@ class DataFrameXL(pd.DataFrame):
         return result
 
     def _remap_style_keys(self, old_to_new):
-        new_styles = {}
 
+        # Eliminar del mapeo old_to_new los pares donde clave==valor ("0:0" u otras identidades)
+        old_to_new = {k: v for k, v in old_to_new.items() if k != v}
+        new_styles = {}
         for col, rules in self._styles.items():
             temp_rules = {}
 
@@ -448,7 +468,11 @@ class DataFrameXL(pd.DataFrame):
             for row_key, style in rules.items():
                 if isinstance(row_key, int) and row_key in old_to_new:
                     dest = old_to_new[row_key]
-                    temp_rules[f"{dest}_temp"] = style
+                    if dest == row_key:
+                        # Caso 0→0: mantener tal cual
+                        temp_rules[row_key] = style
+                    else:
+                        temp_rules[f"{dest}_temp"] = style
                 else:
                     temp_rules[row_key] = style
 
@@ -457,13 +481,18 @@ class DataFrameXL(pd.DataFrame):
             for row_key, style in temp_rules.items():
                 if isinstance(row_key, str) and row_key.endswith("_temp"):
                     new_row = int(row_key[:-5])
-                    final_rules[new_row] = style
+                    # Si ya existe un estilo en ese destino, fusionar o sobrescribir
+                    if new_row in final_rules:
+                        final_rules[new_row].update(style)  # fusionar dicts
+                    else:
+                        final_rules[new_row] = style
                 else:
                     final_rules[row_key] = style
 
             new_styles[col] = final_rules
 
         return new_styles
+
 
     def drop(self, labels=None, axis=0, index=None, columns=None, inplace=False, **kwargs):
         # Resolver qué se está borrando: filas (axis=0) o columnas (axis=1)
@@ -546,8 +575,6 @@ class DataFrameXL(pd.DataFrame):
                         rules.pop(r_label, None)
 
         return target
-
-
 
     def set_column_style(self, col_name, style: dict):
         """Aplica un estilo global a toda la columna."""
