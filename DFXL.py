@@ -34,9 +34,22 @@ class DataFrameXL(pd.DataFrame):
                 else:
                     df = pd.DataFrame()
 
-                # 🚀 Extraer estilos de cada celda y guardarlos en _styles
+                # Extraer estilos de cada celda y guardarlos en _styles
                 for j, col_name in enumerate(columns):
                     self._styles[col_name] = {}
+
+                    # 1) Estilo del encabezado (fila 1 en Excel)
+                    header_cell = self._ws.cell(row=1, column=j+1)
+                    self._styles[col_name]["header"] = {
+                        "font": header_cell.font,
+                        "fill": header_cell.fill,
+                        "alignment": header_cell.alignment,
+                        "number_format": header_cell.number_format,
+                        "border": header_cell.border,
+                        "protection": header_cell.protection,
+                    }
+
+                    # 2) Estilos de las filas de datos
                     for i, row in enumerate(rows):
                         cell = self._ws.cell(row=i+2, column=j+1)  # +2 porque fila 1 es encabezado
                         self._styles[col_name][i] = {
@@ -44,7 +57,8 @@ class DataFrameXL(pd.DataFrame):
                             "fill": cell.fill,
                             "alignment": cell.alignment,
                             "number_format": cell.number_format,
-                            # puedes añadir border, protection, etc.
+                            "border": cell.border,
+                            "protection": cell.protection,
                         }
 
                 super().__init__(df, *args, **kwargs)
