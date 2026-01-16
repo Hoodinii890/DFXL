@@ -69,8 +69,6 @@ class DataFrameXL(pd.DataFrame):
                 self._ws = None
             super().__init__(df, *args, **kwargs)
 
-
-
     def save(self, filename=None):
         if filename == None:
             filename = self._filename
@@ -150,8 +148,6 @@ class DataFrameXL(pd.DataFrame):
         if "protection" in style and style["protection"]:
             cell.protection = copy(style["protection"])
 
-
-
     @property
     def loc(self):
         base_loc = super().loc
@@ -228,17 +224,8 @@ class DataFrameXL(pd.DataFrame):
                 try:
                     for j, col_name in enumerate(columns):
                         for i, val in enumerate(base_loc.obj[col_name]):
-                            cell = ws.cell(row=i+2, column=j+1, value=val)
+                            ws.cell(row=i+2, column=j+1, value=val)
 
-                            # Aplicar estilo si existe
-                            if hasattr(base_loc.obj, "_styles") and col_name in base_loc.obj._styles:
-                                for row_key, style in base_loc.obj._styles[col_name].items():
-                                    if row_key == "global":
-                                        base_loc.obj._apply_style(cell, style)
-                                    elif isinstance(row_key, int) and row_key == i:
-                                        base_loc.obj._apply_style(cell, style)
-                                    elif isinstance(row_key, slice) and i in range(row_key.start or 0, row_key.stop or len(base_loc.obj)):
-                                        base_loc.obj._apply_style(cell, style)
 
                 except Exception as e:
                     print(f"[ERROR] No se pudo actualizar Excel desde loc: {e}")
@@ -302,14 +289,7 @@ class DataFrameXL(pd.DataFrame):
                 try:
                     for j, col_name in enumerate(columns):
                         for i, val in enumerate(base_iloc.obj[col_name]):
-                            cell = ws.cell(row=i+2, column=j+1, value=val)
-
-                            # Aplicar estilo si existe
-                            if (hasattr(base_iloc.obj, "_styles") and
-                                col_name in base_iloc.obj._styles and
-                                i in base_iloc.obj._styles[col_name]):
-                                style = base_iloc.obj._styles[col_name][i]
-                                base_iloc.obj._apply_style(cell, style)
+                            ws.cell(row=i+2, column=j+1, value=val)
 
                 except Exception as e:
                     print(f"[ERROR] No se pudo actualizar Excel desde iloc: {e}")
@@ -456,6 +436,35 @@ class DataFrameXL(pd.DataFrame):
 
         return result
 
+    def concat(self, other, ignore_index=True):
+        styles = self._styles
+        """
+        Concatenar otro DataFrame al actual, siempre en dirección vertical (debajo).
+        Los estilos no se heredan, solo se mantienen los existentes.
+        """
+        # 1. Concatenar con pandas (axis=0 fijo)
+        result_df = pd.concat([self, other], axis=0, ignore_index=ignore_index)
+
+        # 2. Actualizar self internamente
+        self.__init__(df=result_df, filename=self._filename, sheet_name=self._sheet_name)
+
+        # 3. Volcar datos al Worksheet
+        ws = self._ws
+        columns = list(result_df.columns)
+
+        # Encabezados
+        for j, col_name in enumerate(columns):
+            ws.cell(row=1, column=j+1, value=col_name)
+
+        # Datos
+        for i in range(len(result_df)):
+            for j, col_name in enumerate(columns):
+                val = result_df.iat[i, j]
+                ws.cell(row=i+2, column=j+1, value=val)
+        self._styles = styles
+        return self
+
+
     def _remap_style_keys(self, old_to_new):
 
         # Eliminar del mapeo old_to_new los pares donde clave==valor ("0:0" u otras identidades)
@@ -492,7 +501,6 @@ class DataFrameXL(pd.DataFrame):
             new_styles[col] = final_rules
 
         return new_styles
-
 
     def drop(self, labels=None, axis=0, index=None, columns=None, inplace=False, **kwargs):
         # Resolver qué se está borrando: filas (axis=0) o columnas (axis=1)
@@ -633,6 +641,7 @@ class DataFrameXL(pd.DataFrame):
             self._styles = {}
         # Usamos una clave especial "__document__"
         self._styles["__document__"] = {"global": style}
+
 
 
 __all__ = ["DataFrameXL"]

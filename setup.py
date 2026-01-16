@@ -10,7 +10,7 @@ def read_readme():
     return ""
 
 # Leer la versión desde el código o definirla aquí
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 
 setup(
     name="dataframexl",
